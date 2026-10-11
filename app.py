@@ -3,11 +3,9 @@ import numpy as np
 import sqlite3
 import datetime
 
-# Configuración móvil optimizada
 st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Global)")
 
-# --- CONEXIÓN DE BASE DE DATOS LOCAL ---
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db")
     cursor = conn.cursor()
@@ -27,9 +25,7 @@ def conectar_db():
 
 conn = conectar_db()
 
-# --- CARGA GLOBAL DE LIGAS COMPLETAS ---
 def sincronizar_liga_pais(pais):
-    """Base de datos con las estructuras y métricas de rendimiento completas por país"""
     ligas_mundiales = {
         "Ecuador (LigaPro Completa)": {
             "LDU Quito": ["V,V,E,V,V", 1.9, 0.7, 5.8, 11.2, 2.3],
@@ -56,25 +52,14 @@ def sincronizar_liga_pais(pais):
         "España (LaLiga Completa)": {
             "Real Madrid": ["V,V,E,V,D", 2.2, 0.8, 6.4, 10.2, 1.5],
             "Barcelona": ["V,V,V,D,V", 2.4, 1.1, 5.8, 12.1, 2.1],
-            "Atlético Madrid": ["E,V,E,V,E", 1.6, 0.7, 5.0, 14.5, 2.8],
-            "Real Sociedad": ["E,D,V,E,V", 1.4, 1.2, 4.9, 11.8, 2.3],
-            "Athletic Club": ["V,E,V,D,V", 1.6, 1.1, 5.5, 13.0, 2.6],
-            "Girona": ["D,V,E,E,V", 1.7, 1.3, 5.1, 10.5, 2.0],
-            "Real Betis": ["E,V,D,V,E", 1.3, 1.1, 4.8, 12.2, 2.4],
-            "Villarreal": ["V,D,V,E,V", 1.8, 1.5, 5.2, 11.4, 2.7]
+            "Atlético Madrid": ["E,V,E,V,E", 1.6, 0.7, 5.0, 14.5, 2.8]
         },
         "Inglaterra (Premier League Completa)": {
             "Manchester City": ["V,E,V,V,V", 2.6, 0.9, 7.5, 8.5, 1.2],
             "Arsenal": ["V,E,V,D,V", 2.1, 0.8, 6.1, 11.0, 1.9],
-            "Liverpool": ["V,V,D,V,V", 2.3, 1.0, 6.8, 10.5, 1.6],
-            "Aston Villa": ["V,E,V,E,D", 1.7, 1.3, 5.4, 12.0, 2.4],
-            "Tottenham": ["D,V,V,D,V", 1.9, 1.5, 6.5, 10.2, 2.2],
-            "Chelsea": ["E,V,E,V,D", 1.8, 1.4, 5.9, 11.8, 2.6],
-            "Manchester United": ["D,E,V,D,E", 1.4, 1.5, 5.1, 12.4, 2.5],
-            "Newcastle": ["E,D,V,D,V", 1.6, 1.4, 6.0, 11.2, 2.1]
+            "Liverpool": ["V,V,D,V,V", 2.3, 1.0, 6.8, 10.5, 1.6]
         }
     }
-    
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for nombre, d in ligas_mundiales[pais].items():
@@ -88,7 +73,6 @@ def sincronizar_liga_pais(pais):
         return True
     return False
 
-# --- ALGORITMO PREDICTIVO ---
 def calcular_poder_equipo(historial, xg_f, xg_c, es_local, corners, faltas, amarillas, num_bajas, impacto_bajas, clima_extremo, altitud_alta):
     dif_xg = xg_f - xg_c
     score_xg = 1 / (1 + np.exp(-dif_xg / 3.0))
@@ -100,10 +84,8 @@ def calcular_poder_equipo(historial, xg_f, xg_c, es_local, corners, faltas, amar
     score_disciplina = max(1.0 - ((faltas * 0.02) + (amarillas * 0.1)), 0.0)
     score_secundario = (score_corners * 0.6) + (score_disciplina * 0.4)
     poder_base = (score_xg * 0.30) + (score_forma * 0.25) + (score_local * 0.15) + (score_secundario * 0.15)
-    
     tasa_penalizacion = 0.10 if impacto_bajas == "Muy Alto" else 0.05 if impacto_bajas == "Medio" else 0.02
     poder_base *= (1.0 - min(num_bajas * tasa_penalizacion, 0.40))
-    
     if clima_extremo: poder_base *= 0.92
     if altitud_alta and not es_local: poder_base *= 0.85
     return max(poder_base, 0.05)
@@ -113,20 +95,16 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     f_kelly = ((cuota_casa - 1) * probabilidad - (1.0 - probabilidad)) / (cuota_casa - 1)
     return max(f_kelly * fraccion, 0.0)
 
-# --- MENÚ DE INTERFAZ ---
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
-
 lista_existente = [row[0] for row in conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación e Inyección de Ligas")
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
-    
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
             st.success(f"¡Base de datos actualizada con los clubes de: {pais_seleccionado}!")
             st.rerun()
-
     st.markdown("---")
     st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
     with st.form("form_manual"):
@@ -167,12 +145,10 @@ elif menu == "Análisis y Cuotas":
         banca_total = st.sidebar.number_input("💵 Tu Banca Total ($)", min_value=10.0, value=1000.0, step=50.0)
         perfil_riesgo = st.sidebar.selectbox("🛡️ Gestión de Riesgo", ["Conservador (1/4)", "Moderado (1/2)", "Agresivo (Full)"])
         fraccion_kelly = 0.25 if "Conservador" in perfil_riesgo else 0.50 if "Moderado" in perfil_riesgo else 1.00
-
         st.subheader("🏟️ Entorno Táctico")
         c1, c2 = st.columns(2)
         clima_ext = c1.checkbox("🌧️ Clima Extremo")
         altitud_alta = c2.checkbox("🏔️ Partido en Altura (>2500m)")
-
         col_l, col_v = st.columns(2)
         with col_l:
             st.header("🏠 Local")
@@ -180,5 +156,16 @@ elif menu == "Análisis y Cuotas":
             _, f_l, xgf_l, xgc_l, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
             bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bl_v")
             imp_l = st.selectbox("Impacto Bajas", ["Bajo", "Medio", "Muy Alto"], key="il_v")
-
         with col_v:
+            st.header("🚀 Visitante")
+            eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
+            _, f_v, xgf_v, xgc_v, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
+            bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bv_v")
+            imp_v = st.selectbox("Impacto Bajas", ["Bajo", "Medio", "Muy Alto"], key="iv_v")
+        st.markdown("---")
+        st.subheader("💰 Cuotas de las Casas de Apuestas")
+        cc1, cc2, cc3 = st.columns(3)
+        cuota_casa_l = cc1.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05)
+        cuota_casa_e = cc2.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05)
+        cuota_casa_v = cc3.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05)
+        if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
