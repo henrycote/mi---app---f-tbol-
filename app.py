@@ -5,22 +5,14 @@ import sqlite3
 st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Élite PRO)")
 
-# Conexión limpia y optimizada a la nueva base de datos estructurada
 @st.cache_resource
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_elite.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS equipos (
-            nombre TEXT PRIMARY KEY, 
-            forma TEXT, 
-            xg_favor_local REAL, 
-            xg_contra_local REAL, 
-            xg_favor_vis REAL, 
-            xg_contra_vis REAL, 
-            corners REAL, 
-            faltas REAL, 
-            amarillas REAL
+            nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, 
+            xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL
         )
     """)
     conn.commit()
@@ -29,8 +21,6 @@ def conectar_db():
 conn = conectar_db()
 
 def sincronizar_liga_pais(pais):
-    # Inyección de datos desglosados (Ataque/Defensa de Local VS Ataque/Defensa de Visitante)
-    # Formato: (Nombre, Forma, xGF_Local, xGC_Local, xGF_Vis, xGC_Vis, Córners, Faltas, Amarillas)
     ligas_mundiales = {
         "Ecuador (LigaPro Completa)": [
             ("LDU Quito", "V,V,E,V,V", 2.2, 0.5, 1.6, 0.9, 5.8, 11.2, 2.3),
@@ -50,7 +40,7 @@ def sincronizar_liga_pais(pais):
             ("Atlético Madrid", "E,V,E,V,E", 1.9, 0.5, 1.3, 0.9, 5.0, 14.5, 2.8)
         ],
         "Inglaterra (Premier League Completa)": [
-            ("Manchester City", "V,E,V,V,V", 2.8, 0.7, 2.4, 1.1, 7.5, 8.5, 1.2),
+            ("Manchester City", "V,E,V,V,V", 2.6, 0.9, 7.5, 8.5, 1.2),
             ("Arsenal", "V,E,V,D,V", 2.3, 0.6, 1.9, 1.0, 6.1, 11.0, 1.9),
             ("Liverpool", "V,V,D,V,V", 2.5, 0.8, 2.1, 1.2, 6.8, 10.5, 1.6)
         ]
@@ -93,7 +83,7 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r for r in lista_raw]
+lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación e Inyección de Ligas")
@@ -135,34 +125,44 @@ elif menu == "Análisis y Cuotas":
         altitud_alta = st.checkbox("🏔️ Partido en Altura (>2500m)")
         
         st.markdown("### 🏠 Configuración del Local")
-        eq_l = st.selectbox("Seleccionar Local", [r[0] for r in lista_existente], index=0)
+        eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
         _, f_l, xgf_l_h, xgc_l_h, xgf_l_a, xgc_l_a, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
         bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bajas_l_in")
         imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="imp_l_in")
         
         st.markdown("### 🚀 Configuración del Visitante")
-        eq_v = st.selectbox("Seleccionar Visitante", [r[0] for r in lista_existente], index=min(1, len(lista_existente)-1))
+        eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
         _, f_v, xgf_v_h, xgc_v_h, xgf_v_a, xgc_v_a, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
         bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bajas_v_in")
         imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="imp_v_in")
         
         st.markdown("---")
         st.subheader("💰 Cuotas de las Casas de Apuestas")
-        col_cuo1, col_cuo2, col_cuo3 = st.columns(3)
-        cuota_casa_l = col_cuo1.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="c_l_in")
-        cuota_casa_e = col_cuo2.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="c_e_in")
-        cuota_casa_v = col_cuo3.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="c_v_in")
+        cuota_casa_l = st.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="c_l_in")
+        cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="c_e_in")
+        cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="c_v_in")
         
         st.markdown("### ⚽ Cuotas para Goles (Mercado Over / Under 2.5)")
-        col_g1, col_g2 = st.columns(2)
-        cuota_over_25 = col_g1.number_input("Cuota Más de 2.5 Goles", min_value=1.01, value=1.90, step=0.05)
-        cuota_under_25 = col_g2.number_input("Cuota Menos de 2.5 Goles", min_value=1.01, value=1.90, step=0.05)
+        cuota_over_25 = st.number_input("Cuota Más de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="over_in")
+        cuota_under_25 = st.number_input("Cuota Menos de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="under_in")
         
+        # CORRECCIÓN RADICAL: Visualización por st.write con Markdown nativo indestructible para celular
         if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
-            # REFINAMIENTO PRO: Cruzamos xG de Local en Casa contra xG de Visitante Fuera de Casa
             p_l = calcular_poder_equipo(f_l, xgf_l_h, xgc_l_h, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
             p_v = calcular_poder_equipo(f_v, xgf_v_a, xgc_v_a, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
             total = p_l + p_v
             prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
             prob_e = 1.0 - (prob_l + prob_v)
             
+            g_l = (xgf_l_h + xgc_v_a) / 2.0
+            g_v = (xgf_v_a + xgc_l_h) / 2.0
+            if altitud_alta: g_v *= 0.85
+            if clima_ext:
+                g_l *= 0.90
+                g_v *= 0.90
+            
+            goles_totales = g_l + g_v
+            prob_over_25 = 1.0 - (np.exp(-goles_totales) * (1 + goles_totales + (goles_totales**2)/2.0))
+            prob_under_25 = 1.0 - prob_over_25
+            
+            st.markdown("### 🎯 Goles Proyectados Avanzados")
