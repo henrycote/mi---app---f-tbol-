@@ -6,7 +6,6 @@ st.set_page_config(page_title="Sistema Quant", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
 def conectar_db_directo():
-    # Creamos un archivo de base de datos totalmente nuevo y unico para romper el bloqueo de la nube
     conn = sqlite3.connect("quant_sistema_final_2026.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
@@ -75,8 +74,10 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     return max(f_kelly * fraccion, 0.0)
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
+
+# TRUCO FINAL DE LIMPIEZA: Extraemos estrictamente el texto del primer elemento [0] para borrar los parentesis
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r for r in lista_raw]
+lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación de Ligas")
