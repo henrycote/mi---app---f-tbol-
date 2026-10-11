@@ -2,19 +2,14 @@ import streamlit as st
 import numpy as np
 import sqlite3
 
-st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
-st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Élite PRO)")
+st.set_page_config(page_title="Sistema Quant", layout="wide", page_icon="🏆")
+st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
 @st.cache_resource
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS equipos (
-            nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, 
-            xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL
-        )
-    """)
+    cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL)")
     conn.commit()
     return conn
 
@@ -48,14 +43,7 @@ def sincronizar_liga_pais(pais):
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for eq in ligas_mundiales[pais]:
-            cursor.execute("""
-                INSERT INTO equipos (nombre, forma, xg_favor_local, xg_contra_local, xg_favor_vis, xg_contra_vis, corners, faltas, amarillas) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
-                ON CONFLICT(nombre) DO UPDATE SET 
-                forma=excluded.forma, xg_favor_local=excluded.xg_favor_local, xg_contra_local=excluded.xg_contra_local, 
-                xg_favor_vis=excluded.xg_favor_vis, xg_contra_vis=excluded.xg_contra_vis, corners=excluded.corners, 
-                faltas=excluded.faltas, amarillas=excluded.amarillas
-            """, eq)
+            cursor.execute("INSERT INTO equipos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor_local=excluded.xg_favor_local, xg_contra_local=excluded.xg_contra_local, xg_favor_vis=excluded.xg_favor_vis, xg_contra_vis=excluded.xg_contra_vis, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", eq)
         conn.commit()
         return True
     return False
@@ -86,44 +74,38 @@ lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre AS
 lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
-    st.header("⚙️ Importación e Inyección de Ligas")
-    pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
-    if st.button("🔄 Cargar Equipos Oficiales"):
+    st.header("⚙️ Importación de Ligas")
+    pais_seleccionado = st.selectbox("Selecciona la liga", ["Ecuador (LigaPro Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
+    if st.button("🔄 Cargar Equipos"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success("¡Base de datos Élite actualizada con éxito!")
+            st.success("¡Base de datos actualizada!")
             st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
-        st.warning("⚠️ Base de datos limpia. Ve a 'Configurar Ligas' para cargar la liga de tu país.")
+        st.warning("⚠️ Base de datos limpia. Ve a 'Configurar Ligas' para cargar la liga.")
     else:
         banca_total = st.sidebar.number_input("💵 Tu Banca Total ($)", min_value=10.0, value=1000.0, step=50.0)
         perfil_riesgo = st.sidebar.selectbox("🛡️ Gestión de Riesgo", ["Conservador (1/4)", "Moderado (1/2)", "Agresivo (Full)"])
         fraccion_kelly = 0.25 if "Conservador" in perfil_riesgo else 0.50 if "Moderado" in perfil_riesgo else 1.00
         
-        st.subheader("🏟️ Entorno Táctico")
         clima_ext = st.checkbox("🌧️ Clima Extremo")
-        altitud_alta = st.checkbox("🏔️ Partido en Altura (>2500m)")
+        altitud_alta = st.checkbox("🏔️ Partido en Altura")
         
-        st.markdown("### 🏠 Configuración del Local")
         eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
         _, f_l, xgf_l_h, xgc_l_h, xgf_l_a, xgc_l_a, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
         bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bajas_l_in")
         imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="imp_l_in")
         
-        st.markdown("### 🚀 Configuración del Visitante")
         eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
         _, f_v, xgf_v_h, xgc_v_h, xgf_v_a, xgc_v_a, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
         bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bajas_v_in")
         imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="imp_v_in")
         
-        st.markdown("---")
-        st.subheader("💰 Cuotas de las Casas de Apuestas")
         cuota_casa_l = st.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="c_l_in")
         cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="c_e_in")
         cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="c_v_in")
         
-        st.markdown("### ⚽ Cuotas para Goles (Mercado Over / Under 2.5)")
         cuota_over_25 = st.number_input("Cuota Más de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="over_in")
         cuota_under_25 = st.number_input("Cuota Menos de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="under_in")
         
@@ -145,25 +127,18 @@ elif menu == "Análisis y Cuotas":
         prob_under_25 = 1.0 - prob_over_25
         
         st.markdown("---")
-        st.markdown("## 📊 RESULTADOS DEL ANÁLISIS AUTOMÁTICO")
+        st.markdown("## 📊 RESULTADOS AUTOMÁTICOS")
         
-        st.markdown("### 🎯 Goles Proyectados Avanzados")
-        st.info(f"⚽ Goles esperados {eq_l} (Local): {g_l:.2f} | Goles esperados {eq_v} (Visitante): {g_v:.2f}")
-        st.success(f"📊 Línea Combinada de Goles del Encuentro: {goles_totales:.2f} goles")
+        st.subheader("🎯 Goles Proyectados Avanzados")
+        st.info(f"⚽ Goles {eq_l}: {g_l:.2f} | Goles {eq_v}: {g_v:.2f}")
+        st.success(f"📊 Total Goles Estimados: {goles_totales:.2f}")
         
-        # RENDERING BLINDADO 1: Usando matrices nativas y st.dataframe sin diccionarios ni llaves
-        st.markdown("### 📈 Mercado Principal: 1X2")
-        matriz_1x2 = [
-            [eq_l, f"{prob_l*100:.1f}%", f"{1/prob_l:.2f}", f"{cuota_casa_l:.2f}", "✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", f"${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}"],
-            ["Empate", f"{prob_e*100:.1f}%", f"{1/prob_e:.2f}", f"{cuota_casa_e:.2f}", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", f"${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}"],
-            [eq_v, f"{prob_v*100:.1f}%", f"{1/prob_v:.2f}", f"{cuota_casa_v:.2f}", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No", f"${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}"]
-        ]
-        st.dataframe(
-            data=matriz_1x2, 
-            column_config={0: "Mercado", 1: "Probabilidad", 2: "Cuota Teórica", 3: "Cuota Casa", 4: "¿Hay Valor?", 5: "Inversión Sugerida"},
-            use_container_width=True
-        )
+        st.subheader("📈 Escáner de Cuotas y Value Bets")
         
-        # RENDERING BLINDADO 2: Mercado Alternativo Over/Under 2.5 libre de llaves {}
-        st.markdown("### 📈 Mercado Alternativo: Goles (Over/Under 2.5)")
-        matriz_goles = [
+        st.write(f"👉 **{eq_l}**: Prob: {prob_l*100:.1f}% | Cuota Teórica: {1/prob_l:.2f} | ¿Valor?: {'SI' if cuota_casa_l > (1/prob_l) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}")
+        st.write(f"👉 **Empate**: Prob: {prob_e*100:.1f}% | Cuota Teórica: {1/prob_e:.2f} | ¿Valor?: {'SI' if cuota_casa_e > (1/prob_e) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}")
+        st.write(f"👉 **{eq_v}**: Prob: {prob_v*100:.1f}% | Cuota Teórica: {1/prob_v:.2f} | ¿Valor?: {'SI' if cuota_casa_v > (1/prob_v) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}")
+        
+        st.subheader("⚽ Mercado Goles (Over/Under 2.5)")
+        st.write(f"👉 **Más de 2.5**: Prob: {prob_over_25*100:.1f}% | Cuota Teórica: {1/prob_over_25:.2f} | ¿Valor?: {'SI' if cuota_over_25 > (1/prob_over_25) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_over_25, cuota_over_25, fraccion_kelly):.2f}")
+        st.write(f"👉 **Menos de 2.5**: Prob: {prob_under_25*100:.1f}% | Cuota Teórica: {1/prob_under_25:.2f} | ¿Valor?: {'SI' if cuota_under_25 > (1/prob_under_25) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_under_25, cuota_under_25, fraccion_kelly):.2f}")
