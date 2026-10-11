@@ -151,21 +151,19 @@ elif menu == "Análisis y Cuotas":
         st.info(f"⚽ Goles esperados {eq_l} (Local): {g_l:.2f} | Goles esperados {eq_v} (Visitante): {g_v:.2f}")
         st.success(f"📊 Línea Combinada de Goles del Encuentro: {goles_totales:.2f} goles")
         
-        # TABLA INDESTRUCTIBLE 1: Mercado Principal 1X2 hecho con DataFrame oficial de Streamlit
+        # RENDERING BLINDADO 1: Usando matrices nativas y st.dataframe sin diccionarios ni llaves
         st.markdown("### 📈 Mercado Principal: 1X2")
-        datos_1x2 = {
-            "Mercado": [eq_l, "Empate", eq_v],
-            "Probabilidad": [f"{prob_l*100:.1f}%", f"{prob_e*100:.1f}%", f"{prob_v*100:.1f}%"],
-            "Cuota Teórica": [f"{1/prob_l:.2f}", f"{1/prob_e:.2f}", f"{1/prob_v:.2f}"],
-            "Cuota Casa": [f"{cuota_casa_l:.2f}", f"{cuota_casa_e:.2f}", f"{cuota_casa_v:.2f}"],
-            "¿Hay Valor?": ["✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No"],
-            "Inversión Sugerida": [f"${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}", f"${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}", f"${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}"]
-        }
-        st.dataframe(datos_1x2, use_container_width=True)
+        matriz_1x2 = [
+            [eq_l, f"{prob_l*100:.1f}%", f"{1/prob_l:.2f}", f"{cuota_casa_l:.2f}", "✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", f"${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}"],
+            ["Empate", f"{prob_e*100:.1f}%", f"{1/prob_e:.2f}", f"{cuota_casa_e:.2f}", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", f"${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}"],
+            [eq_v, f"{prob_v*100:.1f}%", f"{1/prob_v:.2f}", f"{cuota_casa_v:.2f}", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No", f"${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}"]
+        ]
+        st.dataframe(
+            data=matriz_1x2, 
+            column_config={0: "Mercado", 1: "Probabilidad", 2: "Cuota Teórica", 3: "Cuota Casa", 4: "¿Hay Valor?", 5: "Inversión Sugerida"},
+            use_container_width=True
+        )
         
-        # TABLA INDESTRUCTIBLE 2: Mercado Alternativo Over/Under 2.5 hecho con DataFrame oficial de Streamlit
+        # RENDERING BLINDADO 2: Mercado Alternativo Over/Under 2.5 libre de llaves {}
         st.markdown("### 📈 Mercado Alternativo: Goles (Over/Under 2.5)")
-        datos_goles = {
-            "Mercado Goles": ["Más de 2.5 Goles", "Menos de 2.5 Goles"],
-            "Probabilidad": [f"{prob_over_25*100:.1f}%", f"{prob_under_25*100:.1f}%"],
-            "Cuota Teórica": [f"{1/prob_over_25:.2f}", f"{1/prob_under_25:.2f}"],
+        matriz_goles = [
