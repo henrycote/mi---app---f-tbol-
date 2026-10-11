@@ -7,7 +7,7 @@ st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Élite PRO)")
 
 @st.cache_resource
 def conectar_db():
-    conn = sqlite3.connect("futbol_quant_elite.db", check_same_thread=False)
+    conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS equipos (
@@ -37,7 +37,7 @@ def sincronizar_liga_pais(pais):
         "España (LaLiga Completa)": [
             ("Real Madrid", "V,V,E,V,D", 2.5, 0.6, 1.9, 1.0, 6.4, 10.2, 1.5),
             ("Barcelona", "V,V,V,D,V", 2.7, 0.9, 2.1, 1.3, 5.8, 12.1, 2.1),
-            ("Atlético Madrid", "E,V,E,V,E", 1.9, 0.5, 1.3, 0.9, 5.0, 14.5, 2.8)
+            ("Atlético Madrid", "E,V,E,V,E", 1.6, 0.7, 5.0, 14.5, 2.8)
         ],
         "Inglaterra (Premier League Completa)": [
             ("Manchester City", "V,E,V,V,V", 2.6, 0.9, 7.5, 8.5, 1.2),
@@ -127,7 +127,6 @@ elif menu == "Análisis y Cuotas":
         cuota_over_25 = st.number_input("Cuota Más de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="over_in")
         cuota_under_25 = st.number_input("Cuota Menos de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="under_in")
         
-        # PROCESAMIENTO AUTOMÁTICO EN TIEMPO REAL (SIN BOTÓN)
         p_l = calcular_poder_equipo(f_l, xgf_l_h, xgc_l_h, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
         p_v = calcular_poder_equipo(f_v, xgf_v_a, xgc_v_a, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
         total = p_l + p_v
@@ -152,15 +151,22 @@ elif menu == "Análisis y Cuotas":
         st.info(f"⚽ Goles esperados {eq_l} (Local): {g_l:.2f} | Goles esperados {eq_v} (Visitante): {g_v:.2f}")
         st.success(f"📊 Línea Combinada de Goles del Encuentro: {goles_totales:.2f} goles")
         
-        st.markdown("### 📈 Escáner de Cuotas y Inversiones de Valor (Value Bets)")
+        st.markdown("### 📈 Escáner de Cuotas e Inversiones de Valor (Value Bets)")
         
         st.markdown("#### Mercado Principal: 1X2")
-        st.write(f"| Mercado | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |")
-        st.write(f"|---|---|---|---|---|---|")
-        st.write(f"| **{eq_l} (Local)** | {prob_l*100:.1f}% | {1/prob_l:.2f} | {cuota_casa_l:.2f} | {'✅ SÍ' if cuota_casa_l > (1/prob_l) else '❌ No'} | **${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}** |")
-        st.write(f"| **Empate** | {prob_e*100:.1f}% | {1/prob_e:.2f} | {cuota_casa_e:.2f} | {'✅ SÍ' if cuota_casa_e > (1/prob_e) else '❌ No'} | **${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}** |")
-        st.write(f"| **{eq_v} (Visitante)** | {prob_v*100:.1f}% | {1/prob_v:.2f} | {cuota_casa_v:.2f} | {'✅ SÍ' if cuota_casa_v > (1/prob_v) else '❌ No'} | **${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}** |")
+        # EXPLICACIÓN TÉCNICA: Modificado a st.markdown puro con saltos de línea forzados de código para renderizar tablas nativas en el móvil
+        tabla_1x2 = f"""
+
+| Mercado | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **{eq_l} (Local)** | {prob_l*100:.1f}% | {1/prob_l:.2f} | {cuota_casa_l:.2f} | {'✅ SÍ' if cuota_casa_l > (1/prob_l) else '❌ No'} | **${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}** |
+| **Empate** | {prob_e*100:.1f}% | {1/prob_e:.2f} | {cuota_casa_e:.2f} | {'✅ SÍ' if cuota_casa_e > (1/prob_e) else '❌ No'} | **${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}** |
+| **{eq_v} (Visitante)** | {prob_v*100:.1f}% | {1/prob_v:.2f} | {cuota_casa_v:.2f} | {'✅ SÍ' if cuota_casa_v > (1/prob_v) else '❌ No'} | **${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}** |
+"""
+        st.markdown(tabla_1x2)
         
         st.markdown("#### Mercado Alternativo: Goles (Over/Under 2.5)")
-        st.write(f"| Mercado Goles | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |")
-        st.write(f"|---|---|---|---|---|---|")
+        tabla_goles = f"""
+
+| Mercado Goles | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |
+| :--- | :--- | :--- | :--- | :--- | :--- |
