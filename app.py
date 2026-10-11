@@ -5,16 +5,10 @@ import sqlite3
 st.set_page_config(page_title="Sistema Quant", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
-# SOLUCIÓN RADICAL: Eliminamos @st.cache_resource para destruir el congelamiento de memoria del servidor
 def conectar_db_directo():
-    conn = sqlite3.connect("quant_sistema_2026.db", check_same_thread=False)
+    conn = sqlite3.connect("quant_sistema_final_2026.db", check_same_thread=False)
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS equipos (
-            nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, 
-            xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL
-        )
-    """)
+    cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL)")
     conn.commit()
     return conn
 
@@ -48,7 +42,7 @@ def sincronizar_liga_pais(pais):
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for eq in ligas_mundiales[pais]:
-            cursor.execute("INSERT OR REPLACE INTO equipos (nombre, forma, xg_favor_local, xg_contra_local, xg_favor_vis, xg_contra_vis, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", eq)
+            cursor.execute("INSERT OR REPLACE INTO equipos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", eq)
         conn.commit()
         return True
     return False
@@ -76,7 +70,7 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r[0] for r in lista_raw] # Extracción limpia forzada de texto plano
+lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación de Ligas")
