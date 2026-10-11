@@ -182,4 +182,3 @@ elif menu == "Análisis y Cuotas":
             imp_l = st.selectbox("Impacto Bajas", ["Bajo", "Medio", "Muy Alto"], key="il_v")
 
         with col_v:
-    
