@@ -80,12 +80,29 @@ lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre AS
 lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
-    st.header("⚙️ Importación e Inyección de Ligas")
+    st.header("⚙️ Configuración e Inyección de Ligas")
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success("¡Base de datos actualizada!")
+            st.success("¡Base de datos actualizada correctamente!")
             st.rerun()
+            
+    st.markdown("---")
+    st.subheader("➕ REGISTRO MANUAL: Agregar o Actualizar Cualquier Equipo")
+    with st.form("form_manual_estable"):
+        nom = st.text_input("Nombre del Club (Ej: LDU Loja, Delfin SC)").strip()
+        forma_n = st.text_input("Últimos 5 partidos (Ej: V,E,V,D,V)", "V,E,V")
+        xg_f_n = st.number_input("xG Promedio a Favor", 0.0, 5.0, 1.5, 0.1)
+        xg_c_n = st.number_input("xG Promedio en Contra", 0.0, 5.0, 1.2, 0.1)
+        corn_n = st.number_input("Promedio de Córners", 0.0, 20.0, 5.5, 0.5)
+        fl_n = st.number_input("Promedio de Faltas", 0.0, 40.0, 12.0, 0.5)
+        am_n = st.number_input("Promedio de Amarillas", 0.0, 10.0, 2.0, 0.1)
+        if st.form_submit_button("💾 Guardar y Registrar Equipo"):
+            if nom:
+                conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
+                conn.commit()
+                st.success(f"¡{nom} se ha guardado en tu base de datos!")
+                st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
@@ -141,7 +158,6 @@ elif menu == "Análisis y Cuotas":
             st.success(f"📊 Línea Combinada de Goles Totales: {(g_l + g_v):.2f}")
             
             st.markdown("### 📈 Escáner de Cuotas y Value Betting")
-            # NUEVO RENDERING MÓVIL: Una estructura de texto directa inmune a fallos de espaciado o llaves perdidas
             st.text(f"| Mercado | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión |")
             st.text(f"| {eq_l} | {prob_l*100:.1f}% | {1/prob_l:.2f} | {cuota_casa_l:.2f} | {'SI' if cuota_casa_l > (1/prob_l) else 'No'} | ${banca_total * k_l:.2f} |")
             st.text(f"| Empate | {prob_e*100:.1f}% | {1/prob_e:.2f} | {cuota_casa_e:.2f} | {'SI' if cuota_casa_e > (1/prob_e) else 'No'} | ${banca_total * k_e:.2f} |")
