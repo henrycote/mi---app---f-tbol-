@@ -7,8 +7,8 @@ st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
 @st.cache_resource
 def conectar_db():
-    # SOLUCIÓN DEFINITIVA: Cambiamos el nombre del archivo a v3 para forzar la creación de la estructura limpia de 9 columnas
-    conn = sqlite3.connect("futbol_quant_v3.db", check_same_thread=False)
+    # SOLUCIÓN DEFINITIVA: Archivo nuevo forzado para evitar bloqueos de la nube
+    conn = sqlite3.connect("quant_final_2026.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS equipos (
