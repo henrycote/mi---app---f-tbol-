@@ -17,44 +17,45 @@ def conectar_db():
 conn = conectar_db()
 
 def sincronizar_liga_pais(pais):
+    # CORRECCIÓN DE RAÍZ: Los datos ahora se inyectan como valores numéricos puros y texto plano, solucionando el bloqueo en SQLite
     ligas_mundiales = {
-        "Ecuador (LigaPro Completa)": {
-            "LDU Quito": ["V,V,E,V,V", 1.9, 0.7, 5.8, 11.2, 2.3],
-            "Barcelona SC": ["V,E,D,V,E", 1.6, 1.1, 5.2, 13.4, 2.8],
-            "Independiente del Valle": ["V,V,V,E,D", 2.1, 0.8, 6.1, 10.5, 1.9],
-            "Emelec": ["E,D,V,E,V", 1.3, 1.2, 4.7, 14.1, 3.1],
-            "El Nacional": ["V,D,D,V,E", 1.4, 1.3, 5.0, 12.5, 2.7],
-            "Delfín SC": ["E,V,D,E,D", 1.1, 1.2, 4.2, 13.8, 2.4],
-            "Aucas": ["D,E,V,V,D", 1.5, 1.4, 4.9, 11.9, 2.9],
-            "Universidad Católica": ["V,E,V,D,V", 1.7, 1.1, 5.4, 10.8, 2.2],
-            "Mushuc Runa": ["E,D,V,E,V", 1.2, 1.5, 4.1, 15.0, 3.2],
-            "Macará": ["D,V,E,D,E", 1.1, 1.3, 4.5, 12.2, 2.5]
-        },
-        "Argentina (Liga Profesional Completa)": {
-            "River Plate": ["V,E,V,V,E", 2.0, 0.9, 6.2, 10.8, 2.0],
-            "Boca Juniors": ["E,V,D,E,V", 1.5, 1.2, 5.1, 12.9, 2.9],
-            "Racing Club": ["V,D,V,E,V", 1.7, 1.0, 5.5, 11.5, 2.4],
-            "Independiente": ["E,E,V,D,E", 1.2, 1.1, 4.8, 14.2, 3.0],
-            "San Lorenzo": ["D,E,V,E,D", 1.1, 1.2, 4.4, 13.5, 2.8],
-            "Talleres Córdoba": ["V,E,D,V,V", 1.6, 1.1, 5.3, 11.0, 2.3],
-            "Estudiantes LP": ["E,V,E,D,V", 1.4, 1.1, 4.9, 12.1, 2.5],
-            "Vélez Sarsfield": ["V,V,E,V,D", 1.8, 0.9, 5.7, 10.9, 2.1]
-        },
-        "España (LaLiga Completa)": {
-            "Real Madrid": ["V,V,E,V,D", 2.2, 0.8, 6.4, 10.2, 1.5],
-            "Barcelona": ["V,V,V,D,V", 2.4, 1.1, 5.8, 12.1, 2.1],
-            "Atlético Madrid": ["E,V,E,V,E", 1.6, 0.7, 5.0, 14.5, 2.8]
-        },
-        "Inglaterra (Premier League Completa)": {
-            "Manchester City": ["V,E,V,V,V", 2.6, 0.9, 7.5, 8.5, 1.2],
-            "Arsenal": ["V,E,V,D,V", 2.1, 0.8, 6.1, 11.0, 1.9],
-            "Liverpool": ["V,V,D,V,V", 2.3, 1.0, 6.8, 10.5, 1.6]
-        }
+        "Ecuador (LigaPro Completa)": [
+            ("LDU Quito", "V,V,E,V,V", 1.9, 0.7, 5.8, 11.2, 2.3),
+            ("Barcelona SC", "V,E,D,V,E", 1.6, 1.1, 5.2, 13.4, 2.8),
+            ("Independiente del Valle", "V,V,V,E,D", 2.1, 0.8, 6.1, 10.5, 1.9),
+            ("Emelec", "E,D,V,E,V", 1.3, 1.2, 4.7, 14.1, 3.1),
+            ("El Nacional", "V,D,D,V,E", 1.4, 1.3, 5.0, 12.5, 2.7),
+            ("Delfín SC", "E,V,D,E,D", 1.1, 1.2, 4.2, 13.8, 2.4),
+            ("Aucas", "D,E,V,V,D", 1.5, 1.4, 4.9, 11.9, 2.9),
+            ("Universidad Católica", "V,E,V,D,V", 1.7, 1.1, 5.4, 10.8, 2.2),
+            ("Mushuc Runa", "E,D,V,E,V", 1.2, 1.5, 4.1, 15.0, 3.2),
+            ("Macará", "D,V,E,D,E", 1.1, 1.3, 4.5, 12.2, 2.5)
+        ],
+        "Argentina (Liga Profesional Completa)": [
+            ("River Plate", "V,E,V,V,E", 2.0, 0.9, 6.2, 10.8, 2.0),
+            ("Boca Juniors", "E,V,D,E,V", 1.5, 1.2, 5.1, 12.9, 2.9),
+            ("Racing Club", "V,D,V,E,V", 1.7, 1.0, 5.5, 11.5, 2.4),
+            ("Independiente", "E,E,V,D,E", 1.2, 1.1, 4.8, 14.2, 3.0),
+            ("San Lorenzo", "D,E,V,E,D", 1.1, 1.2, 4.4, 13.5, 2.8),
+            ("Talleres Córdoba", "V,E,D,V,V", 1.6, 1.1, 5.3, 11.0, 2.3),
+            ("Estudiantes LP", "E,V,E,D,V", 1.4, 1.1, 4.9, 12.1, 2.5),
+            ("Vélez Sarsfield", "V,V,E,V,D", 1.8, 0.9, 5.7, 10.9, 2.1)
+        ],
+        "España (LaLiga Completa)": [
+            ("Real Madrid", "V,V,E,V,D", 2.2, 0.8, 6.4, 10.2, 1.5),
+            ("Barcelona", "V,V,V,D,V", 2.4, 1.1, 5.8, 12.1, 2.1),
+            ("Atlético Madrid", "E,V,E,V,E", 1.6, 0.7, 5.0, 14.5, 2.8)
+        ],
+        "Inglaterra (Premier League Completa)": [
+            ("Manchester City", "V,E,V,V,V", 2.6, 0.9, 7.5, 8.5, 1.2),
+            ("Arsenal", "V,E,V,D,V", 2.1, 0.8, 6.1, 11.0, 1.9),
+            ("Liverpool", "V,V,D,V,V", 2.3, 1.0, 6.8, 10.5, 1.6)
+        ]
     }
     if pais in ligas_mundiales:
         cursor = conn.cursor()
-        for nombre, d in ligas_mundiales[pais].items():
-            cursor.execute("INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nombre, d, d, d, d, d, d))
+        for eq in ligas_mundiales[pais]:
+            cursor.execute("INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", eq)
         conn.commit()
         return True
     return False
@@ -82,6 +83,8 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     return max(f_kelly * fraccion, 0.0)
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
+
+# TRUCO CORREGIDO: Desempaquetamos los nombres de la tupla para que las listas desplegables queden limpias desde el inicio
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
 lista_existente = [r[0] for r in lista_raw]
 
@@ -90,7 +93,7 @@ if menu == "Configurar Ligas":
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success("¡Base de datos actualizada!")
+            st.success("¡Base de datos actualizada correctamente!")
             st.rerun()
     st.markdown("---")
     st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
@@ -106,7 +109,7 @@ if menu == "Configurar Ligas":
             if nom:
                 conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
                 conn.commit()
-                st.success("¡Registrado!")
+                st.success("¡Equipo guardado!")
                 st.rerun()
 
 elif menu == "Auditoría de Backtesting":
@@ -155,5 +158,3 @@ elif menu == "Análisis y Cuotas":
         cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="cuota_e_in")
         cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="cuota_v_in")
         
-        if st.button("📊 Analizar y Ejecutar Escáner de Valor", key="btn_analizar_definitivo"):
-            p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
