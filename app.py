@@ -9,17 +9,8 @@ st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Global)")
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db")
     cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS equipos (
-            nombre TEXT PRIMARY KEY, forma TEXT, xg_favor REAL, xg_contra REAL, corners REAL, faltas REAL, amarillas REAL
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS historial_apuestas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, local TEXT, visitante TEXT, 
-            mercado_apostado TEXT, cuota REAL, monto REAL, probabilidad_nuestra REAL, resultado_real TEXT, beneficio REAL
-        )
-    """)
+    cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor REAL, xg_contra REAL, corners REAL, faltas REAL, amarillas REAL)")
+    cursor.execute("CREATE TABLE IF NOT EXISTS historial_apuestas (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, local TEXT, visitante TEXT, mercado_apostado TEXT, cuota REAL, monto REAL, probabilidad_nuestra REAL, resultado_real TEXT, beneficio REAL)")
     conn.commit()
     return conn
 
@@ -63,12 +54,7 @@ def sincronizar_liga_pais(pais):
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for nombre, d in ligas_mundiales[pais].items():
-            cursor.execute("""
-                INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas)
-                VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET
-                forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra,
-                corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas
-            """, (nombre, d[0], d[1], d[2], d[3], d[4], d[5]))
+            cursor.execute("INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nombre, d[0], d[1], d[2], d[3], d[4], d[5]))
         conn.commit()
         return True
     return False
@@ -149,23 +135,26 @@ elif menu == "Análisis y Cuotas":
         c1, c2 = st.columns(2)
         clima_ext = c1.checkbox("🌧️ Clima Extremo")
         altitud_alta = c2.checkbox("🏔️ Partido en Altura (>2500m)")
-        col_l, col_v = st.columns(2)
-        with col_l:
-            st.header("🏠 Local")
-            eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
-            _, f_l, xgf_l, xgc_l, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
-            bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bl_v")
-            imp_l = st.selectbox("Impacto Bajas", ["Bajo", "Medio", "Muy Alto"], key="il_v")
-        with col_v:
-            st.header("🚀 Visitante")
-            eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
-            _, f_v, xgf_v, xgc_v, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
-            bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bv_v")
-            imp_v = st.selectbox("Impacto Bajas", ["Bajo", "Medio", "Muy Alto"], key="iv_v")
+        
+        # Selección de equipos simplificada en filas directas para evitar errores de columnas móviles
+        st.markdown("### 🏠 Configuración del Local")
+        eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
+        _, f_l, xgf_l, xgc_l, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
+        bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bl_v")
+        imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="il_v")
+        
+        st.markdown("### 🚀 Configuración del Visitante")
+        eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
+        _, f_v, xgf_v, xgc_v, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
+        bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bv_v")
+        imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="iv_v")
+        
         st.markdown("---")
         st.subheader("💰 Cuotas de las Casas de Apuestas")
         cc1, cc2, cc3 = st.columns(3)
         cuota_casa_l = cc1.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05)
         cuota_casa_e = cc2.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05)
         cuota_casa_v = cc3.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05)
+        
         if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
+            p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
