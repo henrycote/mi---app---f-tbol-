@@ -9,7 +9,14 @@ st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
     cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL)")
+    # CORRECCIÓN DE RAÍZ: Forzamos la eliminación de la estructura vieja para crear la Pro limpia de 9 columnas
+    cursor.execute("DROP TABLE IF EXISTS equipos")
+    cursor.execute("""
+        CREATE TABLE equipos (
+            nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, 
+            xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL
+        )
+    """)
     conn.commit()
     return conn
 
@@ -71,19 +78,19 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r[0] for r in lista_raw]
+lista_existente = [r[0] for r in lista_raw]  # Limpieza de tuplas forzada
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación de Ligas")
     pais_seleccionado = st.selectbox("Selecciona la liga", ["Ecuador (LigaPro Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
-    if st.button("🔄 Cargar Equipos"):
+    if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success("¡Base de datos actualizada!")
+            st.success("¡Base de datos actualizada con éxito!")
             st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
-        st.warning("⚠️ Base de datos limpia. Ve a 'Configurar Ligas' para cargar la liga.")
+        st.warning("⚠️ Base de datos limpia. Ve a 'Configurar Ligas' para cargar la liga de tu país.")
     else:
         banca_total = st.sidebar.number_input("💵 Tu Banca Total ($)", min_value=10.0, value=1000.0, step=50.0)
         perfil_riesgo = st.sidebar.selectbox("🛡️ Gestión de Riesgo", ["Conservador (1/4)", "Moderado (1/2)", "Agresivo (Full)"])
@@ -133,12 +140,17 @@ elif menu == "Análisis y Cuotas":
         st.info(f"⚽ Goles {eq_l}: {g_l:.2f} | Goles {eq_v}: {g_v:.2f}")
         st.success(f"📊 Total Goles Estimados: {goles_totales:.2f}")
         
-        st.subheader("📈 Escáner de Cuotas y Value Bets")
-        
-        st.write(f"👉 **{eq_l}**: Prob: {prob_l*100:.1f}% | Cuota Teórica: {1/prob_l:.2f} | ¿Valor?: {'SI' if cuota_casa_l > (1/prob_l) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}")
-        st.write(f"👉 **Empate**: Prob: {prob_e*100:.1f}% | Cuota Teórica: {1/prob_e:.2f} | ¿Valor?: {'SI' if cuota_casa_e > (1/prob_e) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}")
-        st.write(f"👉 **{eq_v}**: Prob: {prob_v*100:.1f}% | Cuota Teórica: {1/prob_v:.2f} | ¿Valor?: {'SI' if cuota_casa_v > (1/prob_v) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}")
+        st.subheader("📈 Mercado Principal: 1X2")
+        matriz_1x2 = [
+            [eq_l, f"{prob_l*100:.1f}%", f"{1/prob_l:.2f}", f"{cuota_casa_l:.2f}", "✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", f"${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}"],
+            ["Empate", f"{prob_e*100:.1f}%", f"{1/prob_e:.2f}", f"{cuota_casa_e:.2f}", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", f"${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}"],
+            [eq_v, f"{prob_v*100:.1f}%", f"{1/prob_v:.2f}", f"{cuota_casa_v:.2f}", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No", f"${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}"]
+        ]
+        st.dataframe(data=matriz_1x2, column_config={0: "Mercado", 1: "Probabilidad", 2: "Cuota Teórica", 3: "Cuota Casa", 4: "¿Hay Valor?", 5: "Inversión Sugerida"}, use_container_width=True)
         
         st.subheader("⚽ Mercado Goles (Over/Under 2.5)")
-        st.write(f"👉 **Más de 2.5**: Prob: {prob_over_25*100:.1f}% | Cuota Teórica: {1/prob_over_25:.2f} | ¿Valor?: {'SI' if cuota_over_25 > (1/prob_over_25) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_over_25, cuota_over_25, fraccion_kelly):.2f}")
-        st.write(f"👉 **Menos de 2.5**: Prob: {prob_under_25*100:.1f}% | Cuota Teórica: {1/prob_under_25:.2f} | ¿Valor?: {'SI' if cuota_under_25 > (1/prob_under_25) else 'No'} | Inversión: ${banca_total * calcular_kelly(prob_under_25, cuota_under_25, fraccion_kelly):.2f}")
+        matriz_goles = [
+            ["Más de 2.5 Goles", f"{prob_over_25*100:.1f}%", f"{1/prob_over_25:.2f}", f"{cuota_over_25:.2f}", "✅ SÍ" if cuota_over_25 > (1/prob_over_25) else "❌ No", f"${banca_total * calcular_kelly(prob_over_25, cuota_over_25, fraccion_kelly):.2f}"],
+            ["Menos de 2.5 Goles", f"{prob_under_25*100:.1f}%", f"{1/prob_under_25:.2f}", f"{cuota_under_25:.2f}", "✅ SÍ" if cuota_under_25 > (1/prob_under_25) else "❌ No", f"${banca_total * calcular_kelly(prob_under_25, cuota_under_25, fraccion_kelly):.2f}"]
+        ]
+        st.dataframe(data=matriz_goles, column_config={0: "Mercado Goles", 1: "Probabilidad", 2: "Cuota Teórica", 3: "Cuota Casa", 4: "¿Hay Valor?", 5: "Inversión Sugerida"}, use_container_width=True)
