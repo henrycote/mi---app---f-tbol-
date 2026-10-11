@@ -169,3 +169,31 @@ elif menu == "Análisis y Cuotas":
             conn.execute("INSERT INTO historial_apuestas (fecha, local, visitante, mercado_apostado, cuota, monto, probabilidad_nuestra, resultado_real, beneficio) VALUES (?, ?, ?, ?, ?, ?, ?, 'Pendiente', 0)", (str(datetime.date.today()), eq_l, eq_v, "Visitante", cuota_casa_v, banca_total * k_v, prob_v))
             conn.commit()
             st.success("Registrada")
+# --- FORMULARIO MANUAL AGREGADO POR EL ASESOR ---
+if menu == "Configuración":
+    st.markdown("---")
+    st.subheader("🗄️ Registro y Creación Manual de Equipos")
+    with st.form("form_nuevo_equipo"):
+        nom = st.text_input("Nombre del Nuevo Equipo").strip()
+        forma_n = st.text_input("Últimos 5 partidos (Ej: V,V,E,D,V)", "V,E,V,D,V")
+        xg_f_n = st.number_input("xG Promedio a Favor", min_value=0.0, max_value=5.0, value=1.5, step=0.1)
+        xg_c_n = st.number_input("xG Promedio en Contra", min_value=0.0, max_value=5.0, value=1.2, step=0.1)
+        corn_n = st.number_input("Promedio de Córners", min_value=0.0, max_value=20.0, value=5.5, step=0.5)
+        fl_n = st.number_input("Promedio de Faltas", min_value=0.0, max_value=40.0, value=12.0, step=0.5)
+        am_n = st.number_input("Promedio de Amarillas", min_value=0.0, max_value=10.0, value=2.0, step=0.1)
+        
+        if st.form_submit_button("💾 Guardar Equipo en la Base de Datos"):
+            if nom:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(nombre) DO UPDATE SET
+                        forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra,
+                        corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas
+                """, (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
+                conn.commit()
+                st.success(f"¡{nom} ha sido guardado exitosamente en tu base de datos móvil!")
+            else:
+                st.error("Por favor, escribe un nombre válido para el equipo.")
+                         
