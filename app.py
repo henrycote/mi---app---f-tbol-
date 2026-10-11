@@ -92,25 +92,6 @@ if menu == "Configurar Ligas":
         if sincronizar_liga_pais(pais_seleccionado):
             st.success("¡Base de datos Élite actualizada con éxito!")
             st.rerun()
-            
-    st.markdown("---")
-    st.subheader("➕ REGISTRO MANUAL ÉLITE: Agregar o Actualizar Cualquier Equipo")
-    with st.form("form_manual_pro"):
-        nom = st.text_input("Nombre del Club").strip()
-        forma_n = st.text_input("Últimos 5 partidos (Ej: V,E,V,D,V)", "V,E,V")
-        xg_f_l_n = st.number_input("xG de Local a Favor", 0.0, 5.0, 1.6, 0.1)
-        xg_c_l_n = st.number_input("xG de Local en Contra", 0.0, 5.0, 1.0, 0.1)
-        xg_f_v_n = st.number_input("xG de Visitante a Favor", 0.0, 5.0, 1.2, 0.1)
-        xg_c_v_n = st.number_input("xG de Visitante en Contra", 0.0, 5.0, 1.4, 0.1)
-        corn_n = st.number_input("Promedio de Córners", 0.0, 20.0, 5.5, 0.5)
-        fl_n = st.number_input("Promedio de Faltas", 0.0, 40.0, 12.0, 0.5)
-        am_n = st.number_input("Promedio de Amarillas", 0.0, 10.0, 2.0, 0.1)
-        if st.form_submit_button("💾 Guardar y Registrar Equipo"):
-            if nom:
-                conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor_local=excluded.xg_favor_local, xg_contra_local=excluded.xg_contra_local, xg_favor_vis=excluded.xg_favor_vis, xg_contra_vis=excluded.xg_contra_vis, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_l_n, xg_c_l_n, xg_f_v_n, xg_c_v_n, corn_n, fl_n, am_n))
-                conn.commit()
-                st.success(f"¡{nom} registrado exitosamente!")
-                st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
@@ -146,23 +127,40 @@ elif menu == "Análisis y Cuotas":
         cuota_over_25 = st.number_input("Cuota Más de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="over_in")
         cuota_under_25 = st.number_input("Cuota Menos de 2.5 Goles", min_value=1.01, value=1.90, step=0.05, key="under_in")
         
-        # CORRECCIÓN RADICAL: Visualización por st.write con Markdown nativo indestructible para celular
-        if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
-            p_l = calcular_poder_equipo(f_l, xgf_l_h, xgc_l_h, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
-            p_v = calcular_poder_equipo(f_v, xgf_v_a, xgc_v_a, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
-            total = p_l + p_v
-            prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
-            prob_e = 1.0 - (prob_l + prob_v)
-            
-            g_l = (xgf_l_h + xgc_v_a) / 2.0
-            g_v = (xgf_v_a + xgc_l_h) / 2.0
-            if altitud_alta: g_v *= 0.85
-            if clima_ext:
-                g_l *= 0.90
-                g_v *= 0.90
-            
-            goles_totales = g_l + g_v
-            prob_over_25 = 1.0 - (np.exp(-goles_totales) * (1 + goles_totales + (goles_totales**2)/2.0))
-            prob_under_25 = 1.0 - prob_over_25
-            
-            st.markdown("### 🎯 Goles Proyectados Avanzados")
+        # PROCESAMIENTO AUTOMÁTICO EN TIEMPO REAL (SIN BOTÓN)
+        p_l = calcular_poder_equipo(f_l, xgf_l_h, xgc_l_h, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
+        p_v = calcular_poder_equipo(f_v, xgf_v_a, xgc_v_a, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
+        total = p_l + p_v
+        prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
+        prob_e = 1.0 - (prob_l + prob_v)
+        
+        g_l = (xgf_l_h + xgc_v_a) / 2.0
+        g_v = (xgf_v_a + xgc_l_h) / 2.0
+        if altitud_alta: g_v *= 0.85
+        if clima_ext:
+            g_l *= 0.90
+            g_v *= 0.90
+        
+        goles_totales = g_l + g_v
+        prob_over_25 = 1.0 - (np.exp(-goles_totales) * (1 + goles_totales + (goles_totales**2)/2.0))
+        prob_under_25 = 1.0 - prob_over_25
+        
+        st.markdown("---")
+        st.markdown("## 📊 RESULTADOS DEL ANÁLISIS AUTOMÁTICO")
+        
+        st.markdown("### 🎯 Goles Proyectados Avanzados")
+        st.info(f"⚽ Goles esperados {eq_l} (Local): {g_l:.2f} | Goles esperados {eq_v} (Visitante): {g_v:.2f}")
+        st.success(f"📊 Línea Combinada de Goles del Encuentro: {goles_totales:.2f} goles")
+        
+        st.markdown("### 📈 Escáner de Cuotas y Inversiones de Valor (Value Bets)")
+        
+        st.markdown("#### Mercado Principal: 1X2")
+        st.write(f"| Mercado | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |")
+        st.write(f"|---|---|---|---|---|---|")
+        st.write(f"| **{eq_l} (Local)** | {prob_l*100:.1f}% | {1/prob_l:.2f} | {cuota_casa_l:.2f} | {'✅ SÍ' if cuota_casa_l > (1/prob_l) else '❌ No'} | **${banca_total * calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly):.2f}** |")
+        st.write(f"| **Empate** | {prob_e*100:.1f}% | {1/prob_e:.2f} | {cuota_casa_e:.2f} | {'✅ SÍ' if cuota_casa_e > (1/prob_e) else '❌ No'} | **${banca_total * calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly):.2f}** |")
+        st.write(f"| **{eq_v} (Visitante)** | {prob_v*100:.1f}% | {1/prob_v:.2f} | {cuota_casa_v:.2f} | {'✅ SÍ' if cuota_casa_v > (1/prob_v) else '❌ No'} | **${banca_total * calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly):.2f}** |")
+        
+        st.markdown("#### Mercado Alternativo: Goles (Over/Under 2.5)")
+        st.write(f"| Mercado Goles | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión Sugerida |")
+        st.write(f"|---|---|---|---|---|---|")
