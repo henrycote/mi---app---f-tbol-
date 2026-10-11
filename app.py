@@ -5,8 +5,10 @@ import sqlite3
 st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Global)")
 
+# Forzamos la reconexión limpia de la base de datos
+@st.cache_resource
 def conectar_db():
-    conn = sqlite3.connect("futbol_quant_completo.db")
+    conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor REAL, xg_contra REAL, corners REAL, faltas REAL, amarillas REAL)")
     conn.commit()
@@ -134,20 +136,32 @@ elif menu == "Análisis y Cuotas":
         
         if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
             p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
-            p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
+            p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_extremo, altitud_alta)
             total = p_l + p_v
             prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
             prob_e = 1.0 - (prob_l + prob_v)
+            
             k_l = calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly)
             k_e = calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly)
             k_v = calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly)
             
+            # NUEVO FACTOR: Cálculo e inyección forzada de goles esperados sin interferencias
+            g_l = (xgf_l + xgc_v) / 2.0
+            g_v = (xgf_v + xgc_l) / 2.0
+            if altitud_alta: g_v *= 0.85
+            if clima_extremo:
+                g_l *= 0.90
+                g_v *= 0.90
+                
+            st.markdown("### 🎯 Goles Proyectados para el Partido")
+            st.warning(f"⚽ Proyección de Goles **{eq_l} (Local)**: **{g_l:.2f}** goles")
+            st.warning(f"⚽ Proyección de Goles **{eq_v} (Visitante)**: **{g_v:.2f}** goles")
+            st.success(f"📊 Línea de Goles Totales Combinada: **{(g_l + g_v):.2f}** goles")
+            
+            st.markdown("### 📈 Escáner de Cuotas y Value Betting")
             data_comp = {
                 "Resultado": [eq_l, "Empate", eq_v],
                 "Nuestra Probabilidad": [f"{prob_l*100:.1f}%", f"{prob_e*100:.1f}%", f"{prob_v*100:.1f}%"],
                 "Nuestra Cuota": [f"{1/prob_l:.2f}", f"{1/prob_e:.2f}", f"{1/prob_v:.2f}"],
                 "Cuota Casa": [f"{cuota_casa_l:.2f}", f"{cuota_casa_e:.2f}", f"{cuota_casa_v:.2f}"],
                 "¿Hay Valor?": ["✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No"],
-                "Inversión Recomendada": [f"${banca_total * k_l:.2f}", f"${banca_total * k_e:.2f}", f"${banca_total * k_v:.2f}"]
-            }
-            st.table(data_comp)
