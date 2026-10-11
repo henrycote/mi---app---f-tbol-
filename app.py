@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 import sqlite3
-import datetime
 
 st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Global)")
@@ -10,7 +9,6 @@ def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db")
     cursor = conn.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS equipos (nombre TEXT PRIMARY KEY, forma TEXT, xg_favor REAL, xg_contra REAL, corners REAL, faltas REAL, amarillas REAL)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS historial_apuestas (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, local TEXT, visitante TEXT, mercado_apostado TEXT, cuota REAL, monto REAL, probabilidad_nuestra REAL, resultado_real TEXT, beneficio REAL)")
     conn.commit()
     return conn
 
@@ -76,7 +74,7 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     f_kelly = ((cuota_casa - 1) * probabilidad - (1.0 - probabilidad)) / (cuota_casa - 1)
     return max(f_kelly * fraccion, 0.0)
 
-menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
+menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
 lista_existente = [r[0] for r in lista_raw]
 
@@ -87,22 +85,22 @@ if menu == "Configurar Ligas":
         if sincronizar_liga_pais(pais_seleccionado):
             st.success("¡Base de datos actualizada!")
             st.rerun()
-
-elif menu == "Auditoría de Backtesting":
-    st.header("📊 Registro Histórico de Rendimiento")
-    apuestas_abiertas = conn.execute("SELECT id, local, visitante, mercado_apostado, monto, cuota FROM historial_apuestas WHERE resultado_real = 'Pendiente'").fetchall()
-    if apuestas_abiertas:
-        for ap in apuestas_abiertas:
-            with st.form(f"form_{ap[0]}"):
-                st.write(f"⚽ **{ap[1]} vs {ap[2]}** | Apostado: {ap[3]} | Monto: ${ap[4]:.2f}")
-                res_real = st.selectbox("Resultado Real", ["Ganada", "Perdida"], key=f"sel_{ap[0]}")
-                if st.form_submit_button("Cerrar Transacción"):
-                    beneficio = (ap[4] * ap[5] - ap[4]) if res_real == "Ganada" else -ap[4]
-                    conn.execute("UPDATE historial_apuestas SET resultado_real = ?, beneficio = ? WHERE id = ?", (res_real, beneficio, ap[0]))
-                    conn.commit()
-                    st.rerun()
-    else:
-        st.info("No tienes análisis pendientes por calificar.")
+    st.markdown("---")
+    st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
+    with st.form("form_manual"):
+        nom = st.text_input("Nombre del Club").strip()
+        forma_n = st.text_input("Últimos 5 partidos (Ej: V,E,V,D,V)", "V,E,V")
+        xg_f_n = st.number_input("xG Promedio a Favor", 0.0, 5.0, 1.5, 0.1)
+        xg_c_n = st.number_input("xG Promedio en Contra", 0.0, 5.0, 1.2, 0.1)
+        corn_n = st.number_input("Promedio de Córners", 0.0, 20.0, 5.5, 0.5)
+        fl_n = st.number_input("Promedio de Faltas", 0.0, 40.0, 12.0, 0.5)
+        am_n = st.number_input("Promedio de Amarillas", 0.0, 10.0, 2.0, 0.1)
+        if st.form_submit_button("💾 Guardar en Teléfono"):
+            if nom:
+                conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
+                conn.commit()
+                st.success("¡Equipo guardado!")
+                st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
@@ -134,7 +132,6 @@ elif menu == "Análisis y Cuotas":
         cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="c_e_in")
         cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="c_v_in")
         
-        # EL BOTÓN DEFINITIVO CORREGIDO: Fuera de cualquier bloque condicional erróneo
         if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
             p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
             p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
@@ -154,7 +151,3 @@ elif menu == "Análisis y Cuotas":
                 "Inversión Recomendada": [f"${banca_total * k_l:.2f}", f"${banca_total * k_e:.2f}", f"${banca_total * k_v:.2f}"]
             }
             st.table(data_comp)
-            
-            st.markdown("#### 📥 Archivar en Bitácora")
-            b1, b2, b3 = st.columns(3)
-            if k_l > 0 and b1.button(f"Registrar por {eq_l}", key="b1_act"):
