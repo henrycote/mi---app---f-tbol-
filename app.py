@@ -17,7 +17,6 @@ def conectar_db():
 conn = conectar_db()
 
 def sincronizar_liga_pais(pais):
-    # CORRECCIÓN DE RAÍZ: Los datos ahora se inyectan como valores numéricos puros y texto plano, solucionando el bloqueo en SQLite
     ligas_mundiales = {
         "Ecuador (LigaPro Completa)": [
             ("LDU Quito", "V,V,E,V,V", 1.9, 0.7, 5.8, 11.2, 2.3),
@@ -34,12 +33,7 @@ def sincronizar_liga_pais(pais):
         "Argentina (Liga Profesional Completa)": [
             ("River Plate", "V,E,V,V,E", 2.0, 0.9, 6.2, 10.8, 2.0),
             ("Boca Juniors", "E,V,D,E,V", 1.5, 1.2, 5.1, 12.9, 2.9),
-            ("Racing Club", "V,D,V,E,V", 1.7, 1.0, 5.5, 11.5, 2.4),
-            ("Independiente", "E,E,V,D,E", 1.2, 1.1, 4.8, 14.2, 3.0),
-            ("San Lorenzo", "D,E,V,E,D", 1.1, 1.2, 4.4, 13.5, 2.8),
-            ("Talleres Córdoba", "V,E,D,V,V", 1.6, 1.1, 5.3, 11.0, 2.3),
-            ("Estudiantes LP", "E,V,E,D,V", 1.4, 1.1, 4.9, 12.1, 2.5),
-            ("Vélez Sarsfield", "V,V,E,V,D", 1.8, 0.9, 5.7, 10.9, 2.1)
+            ("Racing Club", "V,D,V,E,V", 1.7, 1.0, 5.5, 11.5, 2.4)
         ],
         "España (LaLiga Completa)": [
             ("Real Madrid", "V,V,E,V,D", 2.2, 0.8, 6.4, 10.2, 1.5),
@@ -83,8 +77,6 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     return max(f_kelly * fraccion, 0.0)
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
-
-# TRUCO CORREGIDO: Desempaquetamos los nombres de la tupla para que las listas desplegables queden limpias desde el inicio
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
 lista_existente = [r[0] for r in lista_raw]
 
@@ -93,24 +85,8 @@ if menu == "Configurar Ligas":
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success("¡Base de datos actualizada correctamente!")
+            st.success("¡Base de datos actualizada!")
             st.rerun()
-    st.markdown("---")
-    st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
-    with st.form("form_manual"):
-        nom = st.text_input("Nombre del Club").strip()
-        forma_n = st.text_input("Últimos 5 partidos (Ej: V,E,V,D,V)", "V,E,V")
-        xg_f_n = st.number_input("xG Promedio a Favor", 0.0, 5.0, 1.5, 0.1)
-        xg_c_n = st.number_input("xG Promedio en Contra", 0.0, 5.0, 1.2, 0.1)
-        corn_n = st.number_input("Promedio de Córners", 0.0, 20.0, 5.5, 0.5)
-        fl_n = st.number_input("Promedio de Faltas", 0.0, 40.0, 12.0, 0.5)
-        am_n = st.number_input("Promedio de Amarillas", 0.0, 10.0, 2.0, 0.1)
-        if st.form_submit_button("💾 Guardar en Teléfono"):
-            if nom:
-                conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
-                conn.commit()
-                st.success("¡Equipo guardado!")
-                st.rerun()
 
 elif menu == "Auditoría de Backtesting":
     st.header("📊 Registro Histórico de Rendimiento")
@@ -135,26 +111,50 @@ elif menu == "Análisis y Cuotas":
         banca_total = st.sidebar.number_input("💵 Tu Banca Total ($)", min_value=10.0, value=1000.0, step=50.0)
         perfil_riesgo = st.sidebar.selectbox("🛡️ Gestión de Riesgo", ["Conservador (1/4)", "Moderado (1/2)", "Agresivo (Full)"])
         fraccion_kelly = 0.25 if "Conservador" in perfil_riesgo else 0.50 if "Moderado" in perfil_riesgo else 1.00
+        
         st.subheader("🏟️ Entorno Táctico")
-        c1, c2 = st.columns(2)
-        clima_ext = c1.checkbox("🌧️ Clima Extremo")
-        altitud_alta = c2.checkbox("🏔️ Partido en Altura (>2500m)")
+        clima_ext = st.checkbox("🌧️ Clima Extremo")
+        altitud_alta = st.checkbox("🏔️ Partido en Altura (>2500m)")
         
         st.markdown("### 🏠 Configuración del Local")
         eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
         _, f_l, xgf_l, xgc_l, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
-        bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bajas_local_input")
-        imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="impacto_local_input")
+        bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bajas_l_in")
+        imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="imp_l_in")
         
         st.markdown("### 🚀 Configuración del Visitante")
         eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
         _, f_v, xgf_v, xgc_v, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
-        bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bajas_visitante_input")
-        imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="impacto_visitante_input")
+        bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bajas_v_in")
+        imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="imp_v_in")
         
         st.markdown("---")
         st.subheader("💰 Cuotas de las Casas de Apuestas")
-        cuota_casa_l = st.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="cuota_l_in")
-        cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="cuota_e_in")
-        cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="cuota_v_in")
+        cuota_casa_l = st.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="c_l_in")
+        cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="c_e_in")
+        cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="c_v_in")
         
+        # EL BOTÓN DEFINITIVO CORREGIDO: Fuera de cualquier bloque condicional erróneo
+        if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
+            p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
+            p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
+            total = p_l + p_v
+            prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
+            prob_e = 1.0 - (prob_l + prob_v)
+            k_l = calcular_kelly(prob_l, cuota_casa_l, fraccion_kelly)
+            k_e = calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly)
+            k_v = calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly)
+            
+            data_comp = {
+                "Resultado": [eq_l, "Empate", eq_v],
+                "Nuestra Probabilidad": [f"{prob_l*100:.1f}%", f"{prob_e*100:.1f}%", f"{prob_v*100:.1f}%"],
+                "Nuestra Cuota": [f"{1/prob_l:.2f}", f"{1/prob_e:.2f}", f"{1/prob_v:.2f}"],
+                "Cuota Casa": [f"{cuota_casa_l:.2f}", f"{cuota_casa_e:.2f}", f"{cuota_casa_v:.2f}"],
+                "¿Hay Valor?": ["✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No"],
+                "Inversión Recomendada": [f"${banca_total * k_l:.2f}", f"${banca_total * k_e:.2f}", f"${banca_total * k_v:.2f}"]
+            }
+            st.table(data_comp)
+            
+            st.markdown("#### 📥 Archivar en Bitácora")
+            b1, b2, b3 = st.columns(3)
+            if k_l > 0 and b1.button(f"Registrar por {eq_l}", key="b1_act"):
