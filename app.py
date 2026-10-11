@@ -5,7 +5,6 @@ import sqlite3
 st.set_page_config(page_title="Sistema Quant de Fútbol Pro", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Versión Global)")
 
-# Forzamos la reconexión limpia de la base de datos
 @st.cache_resource
 def conectar_db():
     conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
@@ -87,22 +86,6 @@ if menu == "Configurar Ligas":
         if sincronizar_liga_pais(pais_seleccionado):
             st.success("¡Base de datos actualizada!")
             st.rerun()
-    st.markdown("---")
-    st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
-    with st.form("form_manual"):
-        nom = st.text_input("Nombre del Club").strip()
-        forma_n = st.text_input("Últimos 5 partidos (Ej: V,E,V,D,V)", "V,E,V")
-        xg_f_n = st.number_input("xG Promedio a Favor", 0.0, 5.0, 1.5, 0.1)
-        xg_c_n = st.number_input("xG Promedio en Contra", 0.0, 5.0, 1.2, 0.1)
-        corn_n = st.number_input("Promedio de Córners", 0.0, 20.0, 5.5, 0.5)
-        fl_n = st.number_input("Promedio de Faltas", 0.0, 40.0, 12.0, 0.5)
-        am_n = st.number_input("Promedio de Amarillas", 0.0, 10.0, 2.0, 0.1)
-        if st.form_submit_button("💾 Guardar en Teléfono"):
-            if nom:
-                conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
-                conn.commit()
-                st.success("¡Equipo guardado!")
-                st.rerun()
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
@@ -136,7 +119,7 @@ elif menu == "Análisis y Cuotas":
         
         if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
             p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
-            p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_extremo, altitud_alta)
+            p_v = calcular_poder_equipo(f_v, xgf_v, xgc_v, False, c_v, fa_v, am_v, bajas_v, imp_v, clima_ext, altitud_alta)
             total = p_l + p_v
             prob_l, prob_v = (p_l / total) * 0.78, (p_v / total) * 0.78
             prob_e = 1.0 - (prob_l + prob_v)
@@ -145,23 +128,21 @@ elif menu == "Análisis y Cuotas":
             k_e = calcular_kelly(prob_e, cuota_casa_e, fraccion_kelly)
             k_v = calcular_kelly(prob_v, cuota_casa_v, fraccion_kelly)
             
-            # NUEVO FACTOR: Cálculo e inyección forzada de goles esperados sin interferencias
             g_l = (xgf_l + xgc_v) / 2.0
             g_v = (xgf_v + xgc_l) / 2.0
             if altitud_alta: g_v *= 0.85
-            if clima_extremo:
+            if clima_ext:
                 g_l *= 0.90
                 g_v *= 0.90
                 
             st.markdown("### 🎯 Goles Proyectados para el Partido")
-            st.warning(f"⚽ Proyección de Goles **{eq_l} (Local)**: **{g_l:.2f}** goles")
-            st.warning(f"⚽ Proyección de Goles **{eq_v} (Visitante)**: **{g_v:.2f}** goles")
-            st.success(f"📊 Línea de Goles Totales Combinada: **{(g_l + g_v):.2f}** goles")
+            st.warning(f"⚽ Goles esperados {eq_l} (Local): {g_l:.2f}")
+            st.warning(f"⚽ Goles esperados {eq_v} (Visitante): {g_v:.2f}")
+            st.success(f"📊 Línea Combinada de Goles Totales: {(g_l + g_v):.2f}")
             
             st.markdown("### 📈 Escáner de Cuotas y Value Betting")
-            data_comp = {
-                "Resultado": [eq_l, "Empate", eq_v],
-                "Nuestra Probabilidad": [f"{prob_l*100:.1f}%", f"{prob_e*100:.1f}%", f"{prob_v*100:.1f}%"],
-                "Nuestra Cuota": [f"{1/prob_l:.2f}", f"{1/prob_e:.2f}", f"{1/prob_v:.2f}"],
-                "Cuota Casa": [f"{cuota_casa_l:.2f}", f"{cuota_casa_e:.2f}", f"{cuota_casa_v:.2f}"],
-                "¿Hay Valor?": ["✅ SÍ" if cuota_casa_l > (1/prob_l) else "❌ No", "✅ SÍ" if cuota_casa_e > (1/prob_e) else "❌ No", "✅ SÍ" if cuota_casa_v > (1/prob_v) else "❌ No"],
+            # NUEVO RENDERING MÓVIL: Una estructura de texto directa inmune a fallos de espaciado o llaves perdidas
+            st.text(f"| Mercado | Probabilidad | Cuota Teórica | Cuota Casa | ¿Valor? | Inversión |")
+            st.text(f"| {eq_l} | {prob_l*100:.1f}% | {1/prob_l:.2f} | {cuota_casa_l:.2f} | {'SI' if cuota_casa_l > (1/prob_l) else 'No'} | ${banca_total * k_l:.2f} |")
+            st.text(f"| Empate | {prob_e*100:.1f}% | {1/prob_e:.2f} | {cuota_casa_e:.2f} | {'SI' if cuota_casa_e > (1/prob_e) else 'No'} | ${banca_total * k_e:.2f} |")
+            st.text(f"| {eq_v} | {prob_v*100:.1f}% | {1/prob_v:.2f} | {cuota_casa_v:.2f} | {'SI' if cuota_casa_v > (1/prob_v) else 'No'} | ${banca_total * k_v:.2f} |")
