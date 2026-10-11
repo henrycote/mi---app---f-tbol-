@@ -5,10 +5,9 @@ import sqlite3
 st.set_page_config(page_title="Sistema Quant", layout="wide", page_icon="🏆")
 st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
-@st.cache_resource
-def conectar_db():
-    # SOLUCIÓN DEFINITIVA: Archivo nuevo forzado para evitar bloqueos de la nube
-    conn = sqlite3.connect("quant_final_2026.db", check_same_thread=False)
+# SOLUCIÓN RADICAL: Eliminamos @st.cache_resource para destruir el congelamiento de memoria del servidor
+def conectar_db_directo():
+    conn = sqlite3.connect("quant_sistema_2026.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS equipos (
@@ -19,7 +18,7 @@ def conectar_db():
     conn.commit()
     return conn
 
-conn = conectar_db()
+conn = conectar_db_directo()
 
 def sincronizar_liga_pais(pais):
     ligas_mundiales = {
@@ -49,7 +48,7 @@ def sincronizar_liga_pais(pais):
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for eq in ligas_mundiales[pais]:
-            cursor.execute("INSERT INTO equipos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor_local=excluded.xg_favor_local, xg_contra_local=excluded.xg_contra_local, xg_favor_vis=excluded.xg_favor_vis, xg_contra_vis=excluded.xg_contra_vis, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", eq)
+            cursor.execute("INSERT OR REPLACE INTO equipos (nombre, forma, xg_favor_local, xg_contra_local, xg_favor_vis, xg_contra_vis, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", eq)
         conn.commit()
         return True
     return False
@@ -77,7 +76,7 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r[0] for r in lista_raw]
+lista_existente = [r[0] for r in lista_raw] # Extracción limpia forzada de texto plano
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación de Ligas")
