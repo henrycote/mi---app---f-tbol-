@@ -54,7 +54,7 @@ def sincronizar_liga_pais(pais):
     if pais in ligas_mundiales:
         cursor = conn.cursor()
         for nombre, d in ligas_mundiales[pais].items():
-            cursor.execute("INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nombre, d[0], d[1], d[2], d[3], d[4], d[5]))
+            cursor.execute("INSERT INTO equipos (nombre, forma, xg_favor, xg_contra, corners, faltas, amarillas) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nombre, d, d, d, d, d, d))
         conn.commit()
         return True
     return False
@@ -82,14 +82,14 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     return max(f_kelly * fraccion, 0.0)
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
-lista_existente = [row[0] for row in conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()]
+lista_existente = [row for row in conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación e Inyección de Ligas")
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success(f"¡Base de datos actualizada con los clubes de: {pais_seleccionado}!")
+            st.success(f"¡Base de datos actualizada!")
             st.rerun()
     st.markdown("---")
     st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
@@ -105,7 +105,7 @@ if menu == "Configurar Ligas":
             if nom:
                 conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
                 conn.commit()
-                st.success(f"¡{nom} registrado con éxito!")
+                st.success(f"¡{nom} registrado!")
                 st.rerun()
 
 elif menu == "Auditoría de Backtesting":
@@ -114,7 +114,7 @@ elif menu == "Auditoría de Backtesting":
     if apuestas_abiertas:
         for ap in apuestas_abiertas:
             with st.form(f"form_{ap[0]}"):
-                st.write(f"⚽ **{ap[1]} vs {ap[2]}** | Apostado: {ap[3]} | Monto: ${ap[4]:.2f} | Cuota: {ap[5]:.2f}")
+                st.write(f"⚽ **{ap[1]} vs {ap[2]}** | Apostado: {ap[3]} | Monto: ${ap[4]:.2f}")
                 res_real = st.selectbox("Resultado Real", ["Ganada", "Perdida"], key=f"sel_{ap[0]}")
                 if st.form_submit_button("Cerrar Transacción"):
                     beneficio = (ap[4] * ap[5] - ap[4]) if res_real == "Ganada" else -ap[4]
@@ -122,7 +122,7 @@ elif menu == "Auditoría de Backtesting":
                     conn.commit()
                     st.rerun()
     else:
-        st.info("No tienes análisis pendientes por calificar en tu registro.")
+        st.info("No tienes análisis pendientes por calificar.")
 
 elif menu == "Análisis y Cuotas":
     if not lista_existente:
@@ -136,25 +136,23 @@ elif menu == "Análisis y Cuotas":
         clima_ext = c1.checkbox("🌧️ Clima Extremo")
         altitud_alta = c2.checkbox("🏔️ Partido en Altura (>2500m)")
         
-        # Selección de equipos simplificada en filas directas para evitar errores de columnas móviles
         st.markdown("### 🏠 Configuración del Local")
         eq_l = st.selectbox("Seleccionar Local", lista_existente, index=0)
         _, f_l, xgf_l, xgc_l, c_l, fa_l, am_l = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_l,)).fetchone()
-        bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bl_v")
-        imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="il_v")
+        bajas_l = st.number_input("Bajas Local", 0, 11, 0, key="bajas_local_input")
+        imp_l = st.selectbox("Impacto Bajas Local", ["Bajo", "Medio", "Muy Alto"], key="impacto_local_input")
         
         st.markdown("### 🚀 Configuración del Visitante")
         eq_v = st.selectbox("Seleccionar Visitante", lista_existente, index=min(1, len(lista_existente)-1))
         _, f_v, xgf_v, xgc_v, c_v, fa_v, am_v = conn.execute("SELECT * FROM equipos WHERE nombre = ?", (eq_v,)).fetchone()
-        bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bv_v")
-        imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="iv_v")
+        bajas_v = st.number_input("Bajas Visitante", 0, 11, 0, key="bajas_visitante_input")
+        imp_v = st.selectbox("Impacto Bajas Visitante", ["Bajo", "Medio", "Muy Alto"], key="impacto_visitante_input")
         
         st.markdown("---")
         st.subheader("💰 Cuotas de las Casas de Apuestas")
-        cc1, cc2, cc3 = st.columns(3)
-        cuota_casa_l = cc1.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05)
-        cuota_casa_e = cc2.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05)
-        cuota_casa_v = cc3.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05)
+        cuota_casa_l = st.number_input(f"Cuota {eq_l}", min_value=1.01, value=2.00, step=0.05, key="cuota_l_in")
+        cuota_casa_e = st.number_input("Cuota Empate", min_value=1.01, value=3.20, step=0.05, key="cuota_e_in")
+        cuota_casa_v = st.number_input(f"Cuota {eq_v}", min_value=1.01, value=3.50, step=0.05, key="cuota_v_in")
         
-        if st.button("📊 Analizar y Ejecutar Escáner de Valor"):
+        if st.button("📊 Analizar y Ejecutar Escáner de Valor", key="btn_analizar_definitivo"):
             p_l = calcular_poder_equipo(f_l, xgf_l, xgc_l, True, c_l, fa_l, am_l, bajas_l, imp_l, clima_ext, altitud_alta)
