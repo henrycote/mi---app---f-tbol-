@@ -7,12 +7,11 @@ st.title("🏆 Sistema Quant de Fútbol Profesional (Élite PRO)")
 
 @st.cache_resource
 def conectar_db():
-    conn = sqlite3.connect("futbol_quant_completo.db", check_same_thread=False)
+    # SOLUCIÓN DEFINITIVA: Cambiamos el nombre del archivo a v3 para forzar la creación de la estructura limpia de 9 columnas
+    conn = sqlite3.connect("futbol_quant_v3.db", check_same_thread=False)
     cursor = conn.cursor()
-    # CORRECCIÓN DE RAÍZ: Forzamos la eliminación de la estructura vieja para crear la Pro limpia de 9 columnas
-    cursor.execute("DROP TABLE IF EXISTS equipos")
     cursor.execute("""
-        CREATE TABLE equipos (
+        CREATE TABLE IF NOT EXISTS equipos (
             nombre TEXT PRIMARY KEY, forma TEXT, xg_favor_local REAL, xg_contra_local REAL, 
             xg_favor_vis REAL, xg_contra_vis REAL, corners REAL, faltas REAL, amarillas REAL
         )
@@ -78,7 +77,7 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Configurar Ligas"])
 lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
-lista_existente = [r[0] for r in lista_raw]  # Limpieza de tuplas forzada
+lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación de Ligas")
@@ -134,7 +133,7 @@ elif menu == "Análisis y Cuotas":
         prob_under_25 = 1.0 - prob_over_25
         
         st.markdown("---")
-        st.markdown("## 📊 RESULTADOS AUTOMÁTICOS")
+        st.markdown("## 📊 RESULTADOS DEL ANÁLISIS AUTOMÁTICO")
         
         st.subheader("🎯 Goles Proyectados Avanzados")
         st.info(f"⚽ Goles {eq_l}: {g_l:.2f} | Goles {eq_v}: {g_v:.2f}")
