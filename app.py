@@ -82,14 +82,15 @@ def calcular_kelly(probabilidad, cuota_casa, fraccion=0.25):
     return max(f_kelly * fraccion, 0.0)
 
 menu = st.sidebar.radio("Navegación Móvil", ["Análisis y Cuotas", "Auditoría de Backtesting", "Configurar Ligas"])
-lista_existente = [row for row in conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()]
+lista_raw = conn.cursor().execute("SELECT nombre FROM equipos ORDER BY nombre ASC").fetchall()
+lista_existente = [r[0] for r in lista_raw]
 
 if menu == "Configurar Ligas":
     st.header("⚙️ Importación e Inyección de Ligas")
     pais_seleccionado = st.selectbox("Selecciona la liga para cargar sus equipos", ["Ecuador (LigaPro Completa)", "Argentina (Liga Profesional Completa)", "España (LaLiga Completa)", "Inglaterra (Premier League Completa)"])
     if st.button("🔄 Cargar Equipos Oficiales"):
         if sincronizar_liga_pais(pais_seleccionado):
-            st.success(f"¡Base de datos actualizada!")
+            st.success("¡Base de datos actualizada!")
             st.rerun()
     st.markdown("---")
     st.subheader("➕ Agregar Cualquier Otro Equipo Manualmente")
@@ -105,7 +106,7 @@ if menu == "Configurar Ligas":
             if nom:
                 conn.execute("INSERT INTO equipos VALUES (?,?,?,?,?,?,?) ON CONFLICT(nombre) DO UPDATE SET forma=excluded.forma, xg_favor=excluded.xg_favor, xg_contra=excluded.xg_contra, corners=excluded.corners, faltas=excluded.faltas, amarillas=excluded.amarillas", (nom, forma_n, xg_f_n, xg_c_n, corn_n, fl_n, am_n))
                 conn.commit()
-                st.success(f"¡{nom} registrado!")
+                st.success("¡Registrado!")
                 st.rerun()
 
 elif menu == "Auditoría de Backtesting":
